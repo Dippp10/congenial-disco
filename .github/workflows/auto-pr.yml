@@ -1,76 +1,61 @@
-name: Repo PR Automation
+name: Auto PR + Auto-Merge
 
 on:
   schedule:
-    - cron: '0 */4 * * *'
+    - cron: '0 */6 * * *'   # every 6 hours
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
-  automate:
+  auto-pr:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install tools
-        run: sudo apt-get update && sudo apt-get install jq -y
+      # 1. Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
 
-      - name: Automation script
-        env:
-          TOKEN: ${{ secrets.PAT_TOKEN }}
-          USERNAME: ${{ github.repository_owner }}
+      # 2. Configure Git user
+      - name: Configure Git
         run: |
+          git config user.name "Dippp10"
+          git config user.email "deepikakarthik697@gmail.com"
+      # 3. Create a unique update (timestamp + random + unique file)
+      - name: Create unique update
+        run: |
+          mkdir -p updates
+          # Unique filename per run
+          UNIQUE_FILE="updates/update-${GITHUB_RUN_NUMBER}-$(date +%s).txt"
+          # Add timestamp + random number to ensure content differs
+          echo "Update: $(date -u) | Random: $RANDOM" >> $UNIQUE_FILE
+      # 4. Create branch and push
+      - name: Create branch and push
+        run: |
+          BRANCH="auto-pr-${GITHUB_RUN_NUMBER}"
+          git checkout -b $BRANCH
+          git add updates/
+          git commit -m "Automated update #${GITHUB_RUN_NUMBER}" || echo "No changes to commit"
+          git push origin $BRANCH
+      # 5. Create Pull Request
+      - name: Create Pull Request
+        id: pr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          branch: "auto-pr-${{ github.run_number }}"
+          title: "Automated Update PR #${{ github.run_number }}"
+          body: "This PR was created automatically."
+          base: main
 
-          TARGET_OWNER="vamansworld786-arch"
-          TARGET_REPO="blahblahblah"
-
-          for i in {1..30}
-          do
-
-          NEW_REPO="auto-repo-$(date +%s)-$i"
-
-          echo "Creating repository"
-
-          curl -X POST https://api.github.com/user/repos \
-          -H "Authorization: token $TOKEN" \
-          -d "{\"name\":\"$NEW_REPO\",\"private\":false}"
-
-          sleep 5
-
-          echo "Starring external repository"
-
-          curl -X PUT https://api.github.com/user/starred/$TARGET_OWNER/$TARGET_REPO \
-          -H "Authorization: token $TOKEN"
-
-          echo "Forking repository"
-
-          curl -X POST https://api.github.com/repos/$TARGET_OWNER/$TARGET_REPO/forks \
-          -H "Authorization: token $TOKEN"
-
-          sleep 20
-
-          echo "Adding change to fork"
-
-          CONTENT=$(echo "Automated update $(date)" | base64)
-
-          curl -X PUT https://api.github.com/repos/$USERNAME/$TARGET_REPO/contents/update.txt \
-          -H "Authorization: token $TOKEN" \
-          -d "{\"message\":\"automation commit\",\"content\":\"$CONTENT\"}"
-
-          echo "Creating pull request"
-
-          PR=$(curl -s -X POST https://api.github.com/repos/$TARGET_OWNER/$TARGET_REPO/pulls \
-          -H "Authorization: token $TOKEN" \
-          -d "{\"title\":\"Automated PR\",\"head\":\"$USERNAME:main\",\"base\":\"main\"}")
-
-          PR_NUMBER=$(echo $PR | jq -r .number)
-
-          echo "Pull request number: $PR_NUMBER"
-
-          echo "Auto merging PR"
-
-          curl -X PUT https://api.github.com/repos/$TARGET_OWNER/$TARGET_REPO/pulls/$PR_NUMBER/merge \
-          -H "Authorization: token $TOKEN" \
-          -d '{"merge_method":"merge"}'
-
-          sleep 10
-
-          done
+      # 6. Enable Auto Merge
+      - name: Enable Auto Merge
+        if: steps.pr.outputs.pull-request-number != ''
+        uses: peter-evans/enable-pull-request-automerge@v3
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          merge-method: squash
