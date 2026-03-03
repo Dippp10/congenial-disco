@@ -1,0 +1,36 @@
+name: Auto Update Main
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # every 6 hours
+  workflow_dispatch:
+
+permissions:
+  contents: write  # allows pushing commits
+
+jobs:
+  update-main:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.PAT_TOKEN }}  # PAT needed for write access
+
+      - name: Configure Git user
+        run: |
+          git config user.name "Dippp10"
+          git config user.email "deepikakarthik697@gmail.com"
+
+      - name: Update timestamp
+        run: |
+          mkdir -p updates
+          echo "Last update: $(date -u)" >> updates/update.txt
+
+      - name: Commit and Push to main
+        run: |
+          git checkout main
+          git add updates/update.txt
+          git commit -m "Automated update #${GITHUB_RUN_NUMBER}" || echo "No changes to commit"
+          git push origin main
