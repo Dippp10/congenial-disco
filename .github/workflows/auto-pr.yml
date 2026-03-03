@@ -2,7 +2,7 @@ name: Auto PR Creator
 
 on:
   schedule:
-    - cron: '0 */6 * * *'   # every 6 hours
+    - cron: '0 */6 * * *'  # every 6 hours
   workflow_dispatch:
 
 permissions:
@@ -21,19 +21,25 @@ jobs:
 
       - name: Create timestamp update
         run: |
-          # Create update.txt if it doesn't exist, or append timestamp
           mkdir -p updates
           echo "Last update: $(date -u)" >> updates/update.txt
+
+      - name: Create unique branch and commit
+        run: |
+          BRANCH="auto-pr-${GITHUB_RUN_NUMBER}"
+          git checkout -b $BRANCH
+          git add updates/update.txt
+          git commit -m "Automated update #${GITHUB_RUN_NUMBER}"
+          git push origin $BRANCH
 
       - name: Create Pull Request
         id: cpr
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.PAT_TOKEN }}
-          commit-message: "Automated update"
-          branch: "auto-pr-branch-${{ github.run_number }}"
+          branch: "auto-pr-${{ github.run_number }}"
           title: "Automated Update PR #${{ github.run_number }}"
-          body: "This PR was created automatically to increase contribution activity."
+          body: "This PR was created automatically."
           base: main
 
       - name: Enable Auto Merge
