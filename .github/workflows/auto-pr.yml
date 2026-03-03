@@ -2,7 +2,7 @@ name: Auto PR Creator
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 */6 * * *'   # every 6 hours
   workflow_dispatch:
 
 permissions:
@@ -10,27 +10,33 @@ permissions:
   pull-requests: write
 
 jobs:
-  create-pr:
+  auto-pr:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
 
-      - name: Create update file
+      - name: Create change
         run: |
-          date > update.txt
+          echo "Last update: $(date -u)" >> update.txt
 
       - name: Create Pull Request
+        id: cpr
         uses: peter-evans/create-pull-request@v6
         with:
+          token: ${{ secrets.PAT_TOKEN }}
           commit-message: "Automated update"
           branch: auto-pr-branch
           title: "Automated Update PR"
-          body: "Auto-generated PR for contribution activity"
+          body: "This PR was created automatically."
           base: main
 
-      - name: Enable auto merge
+      - name: Enable Auto Merge
+        if: steps.cpr.outputs.pull-request-number != ''
         uses: peter-evans/enable-pull-request-automerge@v3
         with:
+          token: ${{ secrets.PAT_TOKEN }}
           merge-method: squash
