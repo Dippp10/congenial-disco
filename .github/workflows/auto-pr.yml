@@ -15,23 +15,25 @@ jobs:
 
     steps:
       # 1. Checkout repository
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v3
         with:
           token: ${{ secrets.PAT_TOKEN }}
 
-      # 2. Configure Git
+      # 2. Configure Git user
       - name: Configure Git
         run: |
           git config user.name "Dippp10"
           git config user.email "deepikakarthik697@gmail.com"
 
-      # 3. Create a unique update
+      # 3. Create a unique update (timestamp + random + unique file)
       - name: Create unique update
         run: |
           mkdir -p updates
-          # Use timestamp and random string to ensure uniqueness
-          echo "Update: $(date -u) | Random: $RANDOM" >> updates/update-${GITHUB_RUN_NUMBER}.txt
+          # Unique filename per run
+          UNIQUE_FILE="updates/update-${GITHUB_RUN_NUMBER}-$(date +%s).txt"
+          # Add timestamp + random number to ensure content differs
+          echo "Update: $(date -u) | Random: $RANDOM" >> $UNIQUE_FILE
 
       # 4. Create branch and push
       - name: Create branch and push
@@ -39,7 +41,7 @@ jobs:
           BRANCH="auto-pr-${GITHUB_RUN_NUMBER}"
           git checkout -b $BRANCH
           git add updates/
-          git commit -m "Automated update #${GITHUB_RUN_NUMBER}"
+          git commit -m "Automated update #${GITHUB_RUN_NUMBER}" || echo "No changes to commit"
           git push origin $BRANCH
 
       # 5. Create Pull Request
