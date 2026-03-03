@@ -19,9 +19,11 @@ jobs:
         with:
           token: ${{ secrets.PAT_TOKEN }}
 
-      - name: Create change
+      - name: Create timestamp update
         run: |
-          echo "Last update: $(date -u)" >> update.txt
+          # Create update.txt if it doesn't exist, or append timestamp
+          mkdir -p updates
+          echo "Last update: $(date -u)" >> updates/update.txt
 
       - name: Create Pull Request
         id: cpr
@@ -29,9 +31,9 @@ jobs:
         with:
           token: ${{ secrets.PAT_TOKEN }}
           commit-message: "Automated update"
-          branch: auto-pr-branch
-          title: "Automated Update PR"
-          body: "This PR was created automatically."
+          branch: "auto-pr-branch-${{ github.run_number }}"
+          title: "Automated Update PR #${{ github.run_number }}"
+          body: "This PR was created automatically to increase contribution activity."
           base: main
 
       - name: Enable Auto Merge
