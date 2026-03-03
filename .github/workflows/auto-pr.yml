@@ -1,4 +1,4 @@
-name: Auto PR Creator
+name: Auto PR Creator with Cleanup
 
 on:
   schedule:
@@ -21,8 +21,8 @@ jobs:
 
       - name: Configure Git user
         run: |
-          git config user.name "Dippp10"
-          git config user.email "deepikakarthik697@gmail.com"
+          git config user.name "OfficialCodeVoyage"
+          git config user.email "bondarenkopavloua@yahoo.com"
 
       - name: Create timestamp update
         run: |
@@ -53,3 +53,23 @@ jobs:
         with:
           token: ${{ secrets.PAT_TOKEN }}
           merge-method: squash
+
+      - name: Delete branch after merge
+        if: steps.cpr.outputs.pull-request-number != ''
+        run: |
+          PR_NUMBER=${{ steps.cpr.outputs.pull-request-number }}
+          echo "Waiting for PR #$PR_NUMBER to merge..."
+          # Poll until PR is merged
+          while true; do
+            STATUS=$(curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER | jq -r .merged)
+            if [ "$STATUS" = "true" ]; then
+              echo "PR #$PR_NUMBER merged, deleting branch..."
+              git push origin --delete "auto-pr-${GITHUB_RUN_NUMBER}"
+              break
+            else
+              echo "PR not merged yet, waiting 10s..."
+              sleep 10
+            fi
+          done
