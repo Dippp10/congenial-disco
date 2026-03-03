@@ -53,7 +53,7 @@ jobs:
           branch: "auto-pr-${{ github.run_number }}"
           title: "Automated Update PR #${{ github.run_number }}"
           body: "This PR was created automatically."
-          base: Dippp10-patch-2
+          base: main
 
       # 6. Enable Auto Merge
       - name: Enable Auto Merge
