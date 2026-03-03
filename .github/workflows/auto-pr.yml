@@ -19,8 +19,8 @@ jobs:
           USERNAME: ${{ github.repository_owner }}
         run: |
 
-          TARGET_OWNER="externalusername"
-          TARGET_REPO="externalrepo"
+          TARGET_OWNER="vamansworld786-arch"
+          TARGET_REPO="blahblahblah"
 
           for i in {1..30}
           do
