@@ -1,8 +1,8 @@
-name: Auto PR Creator with Cleanup
+name: Auto PR with Merge Fallback
 
 on:
   schedule:
-    - cron: '0 */6 * * *'   # runs every 6 hours
+    - cron: '0 */6 * * *'   # every 6 hours
   workflow_dispatch:
 
 permissions:
@@ -14,34 +14,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout
+      # 1. Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
           token: ${{ secrets.PAT_TOKEN }}
 
-      # Configure Git
-      - name: Configure Git user
+      # 2. Configure git
+      - name: Configure Git
         run: |
           git config user.name "Dippp10"
           git config user.email "deepikakarthik697@gmail.com"
 
-      # Timestamp update
-      - name: Create timestamp update
+      # 3. Create timestamped update
+      - name: Update timestamp
         run: |
           mkdir -p updates
           echo "Last update: $(date -u)" >> updates/update.txt
 
-      # Create branch and commit
+      # 4. Create unique branch and push
       - name: Create branch and push
         run: |
           BRANCH="auto-pr-${GITHUB_RUN_NUMBER}"
           git checkout -b $BRANCH
           git add updates/update.txt
-          git commit -m "Automated update #${GITHUB_RUN_NUMBER}"
+          git commit -m "Automated update #${GITHUB_RUN_NUMBER}" || echo "No changes to commit"
           git push origin $BRANCH
 
-      # Create PR
+      # 5. Create PR
       - name: Create Pull Request
         id: cpr
         uses: peter-evans/create-pull-request@v6
@@ -52,7 +52,7 @@ jobs:
           body: "This PR was created automatically."
           base: main
 
-      # Enable Auto Merge
+      # 6. Try Auto Merge
       - name: Enable Auto Merge
         if: steps.cpr.outputs.pull-request-number != ''
         uses: peter-evans/enable-pull-request-automerge@v3
@@ -60,25 +60,21 @@ jobs:
           token: ${{ secrets.PAT_TOKEN }}
           merge-method: squash
 
-      # Delete branch after merge
-      - name: Delete branch after merge
+      # 7. Fallback: Direct commit if PR not merged in 30s
+      - name: Fallback Direct Push
         if: steps.cpr.outputs.pull-request-number != ''
         run: |
           PR_NUMBER=${{ steps.cpr.outputs.pull-request-number }}
-          echo "Waiting for PR #$PR_NUMBER to merge..."
-          # Install jq if not available
-          sudo apt-get update && sudo apt-get install -y jq
-          # Poll until PR is merged
-          while true; do
-            MERGED=$(curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
-              -H "Accept: application/vnd.github+json" \
-              https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER | jq -r .merged)
-            if [ "$MERGED" = "true" ]; then
-              echo "PR #$PR_NUMBER merged, deleting branch..."
-              git push origin --delete "auto-pr-${GITHUB_RUN_NUMBER}"
-              break
-            else
-              echo "PR not merged yet, waiting 10s..."
-              sleep 10
-            fi
-          done
+          echo "Waiting 30s for PR #$PR_NUMBER to auto-merge..."
+          sleep 30
+          MERGED=$(curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER | jq -r .merged)
+          if [ "$MERGED" != "true" ]; then
+            echo "PR did not merge automatically. Committing directly to main..."
+            git checkout main
+            git merge "auto-pr-${GITHUB_RUN_NUMBER}" --no-ff -m "Fallback merge #${GITHUB_RUN_NUMBER}"
+            git push origin main
+          else
+            echo "PR auto-merged successfully."
+          fi
