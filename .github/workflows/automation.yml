@@ -64,8 +64,8 @@
 #       - name: Commit and Push Changes
 #         if: github.ref == 'refs/heads/main'  # Ensures it runs only on the main branch
 #         run: |
-#           git config user.name "OfficialCodeVoyage"
-#           git config user.email "bondarenkopavloua@yahoo.com"
+#           git config user.name "Dippp10"
+#           git config user.email "deepikakarthik697@gmail.com"
 #           git add -A
 #           timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 #           git commit -m "Automated Commit: ${timestamp} (UTC)" || echo "No changes to commit."
